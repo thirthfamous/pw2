@@ -29,7 +29,6 @@ Setelah mengikuti pertemuan ini, mahasiswa mampu:
 
 ### 1. Koneksi ke Database
 
-**File: `koneksi.php`**
 ```php
 <?php
 $host = "localhost";
@@ -47,55 +46,115 @@ if (!$conn) {
 **File: `index.php`**
 
 ```php
-<?php include 'koneksi.php'; ?>
-<h2>Data Mahasiswa</h2>
-<a href="tambah.php">Tambah Data</a>
-<table border="1" cellpadding="5">
-  <tr>
-    <th>ID</th>
-    <th>Nama</th>
-    <th>NIM</th>
-    <th>Umur</th>
-    <th>Aksi</th>
-  </tr>
-  <?php
-  $result = mysqli_query($conn, "SELECT * FROM mahasiswa");
-  while ($row = mysqli_fetch_assoc($result)) {
-    echo "<tr>
-            <td>{$row['id']}</td>
-            <td>{$row['nama']}</td>
-            <td>{$row['nim']}</td>
-            <td>{$row['umur']}</td>
-            <td>
-              <a href='edit.php?id={$row['id']}'>Edit</a> |
-              <a href='hapus.php?id={$row['id']}'>Hapus</a>
-            </td>
-          </tr>";
-  }
-  ?>
+<?php
+$host = 'localhost';
+$user = 'root';
+$pass = 'farhan123';
+$dbname = 'kampus';
+
+$conn = new mysqli($host, $user, $pass, $dbname);
+if ($conn->connect_error) {
+  die("Koneksi gagal: " . $conn->connect_error);
+}
+
+$sql = "SELECT nama, nim, umur FROM mahasiswa";
+$result = $conn->query($sql);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mahasiswa</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f8f9fa; }
+    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background-color: #007bff; color: white; }
+    tr:nth-child(even) { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+
+<h2>Daftar Mahasiswa</h2>
+<table border="1">
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Nama</th>
+      <th>NIM</th>
+      <th>Umur</th>
+    </tr>
+  </thead>
+  <tbody>
+    <?php if ($result->num_rows > 0): ?>
+      <?php $no = 1; while($row = $result->fetch_assoc()): ?>
+        <tr>
+          <td><?= $no++ ?></td>
+          <td><?= $row['nama'] ?></td>
+          <td><?= $row['nim'] ?></td>
+          <td><?= $row['umur'] ?></td>
+        </tr>
+      <?php endwhile; ?>
+    <?php else: ?>
+      <tr><td colspan="4">Tidak ada data</td></tr>
+    <?php endif; ?>
+  </tbody>
 </table>
+
+<?php $conn->close(); ?>
+
+</body>
+</html>
+
 ```
 ### 3. Menambahkan Data (Create)
 **File: `tambah.php`**
 
 ```php
-<form method="post">
-  Nama: <input type="text" name="nama"><br>
-  NIM: <input type="text" name="nim"><br>
-  Umur: <input type="number" name="umur"><br>
-  <input type="submit" name="simpan" value="Simpan">
-</form>
-
 <?php
-include 'koneksi.php';
-if (isset($_POST['simpan'])) {
-  $nama = $_POST['nama'];
-  $nim = $_POST['nim'];
-  $umur = $_POST['umur'];
-  mysqli_query($conn, "INSERT INTO mahasiswa (nama, nim, umur) VALUES ('$nama', '$nim', '$umur')");
-  header("Location: index.php");
+// Koneksi ke database
+$conn = new mysqli("localhost", "root", "farhan123", "kampus");
+if ($conn->connect_error) {
+  die("Koneksi gagal: " . $conn->connect_error);
+}
+
+// Proses simpan data
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+  $nama = $_POST["nama"];
+  $nim  = $_POST["nim"];
+  $umur = $_POST["umur"];
+
+  $stmt = $conn->prepare("INSERT INTO mahasiswa (nama nim, umur) VALUES (?, ?, ?)");
+  $stmt->bind_param("ssi", $nama, $nim, $umur);
+
+  if ($stmt->execute()) {
+    header("Location: index.php"); // ✅ Redirect ke halaman index
+    exit; // Penting: hentikan script setelah redirect
+  } else {
+    echo "Gagal menambahkan data: " . $stmt->error;
+  }
+
+  $stmt->close();
+  $conn->close();
 }
 ?>
+
+<!-- Form Tambah -->
+<h2>Tambah Mahasiswa</h2>
+<form method="post">
+  <label>Nama:</label><br>
+  <input type="text" name="nama" required><br><br>
+
+  <label>NIM:</label><br>
+  <input type="text" name="nim" required><br><br>
+
+  <label>Umur:</label><br>
+  <input type="number" name="umur" required><br><br>
+
+  <button type="submit">Simpan</button>
+</form>
+
 ```
 
 ### 4. Mengedit Data (Update)
